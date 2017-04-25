@@ -687,6 +687,7 @@ log\\|\
 min\\|mock\\|\
 node_module\\|\
 rollup\\|\
+spec\\|\
 test\\|tmp\\|\
 vendor\\)s\\{0,1\\}\\(\\b\\|_\\)\
 " ' +
@@ -10105,7 +10106,7 @@ local.assetsDict['/assets.readmeCustomOrg.npmdoc.template.md'] = '\
 # npmdoc-{{env.npm_package_name}} \
 \n\
 \n\
-#### api documentation for \
+#### basic api documentation for \
 {{#if env.npm_package_homepage}} \
 [{{env.npm_package_name}} (v{{env.npm_package_version}})]({{env.npm_package_homepage}}) \
 {{#unless env.npm_package_homepage}} \
@@ -15675,7 +15676,7 @@ instruction\n\
                         // jslint-hack
                         local.nop(error);
                         console.error('cli.customOrgStarFilterNotBuilt - fetched ' + xhr.url);
-                        (xhr.responseText || '').replace((
+                        (xhr.responseText || '').toLowerCase().replace((
                             /href=\"\/package\/(.+?)\"/g
                         ), function (match0, match1) {
                             match0 = local.env.GITHUB_ORG + '/node-' + local.env.GITHUB_ORG +
@@ -15684,24 +15685,33 @@ instruction\n\
                                 return;
                             }
                             onParallel.counter += 1;
-                            local.ajax({
+                            local.onParallelList({ list: [{
                                 url: 'https://raw.githubusercontent.com/' + match0 +
                                     '/gh-pages/build..alpha..travis-ci.org' +
                                     '/screenCapture.npmPackageListing.svg'
-                            }, function (error) {
-                                if (error) {
-                                    console.error('adding ' + match0);
-                                    options.dict[match0] = true;
-                                }
+                            }, {
+                                url: 'https://registry.npmjs.org/' + local.env.GITHUB_ORG +
+                                    '-' + match1
+                            }] }, function (options2, onParallel) {
+                                onParallel.counter += 1;
+                                local.ajax(options2.element, function (error) {
+                                    if (error && !options.dict[match0]) {
+                                        options.dict[match0] = true;
+                                        console.error(
+                                            'cli.customOrgStarFilterNotBuilt - not built ' +
+                                                match0
+                                        );
+                                        console.log(match0);
+                                    }
+                                    onParallel();
+                                });
+                            }, function () {
                                 onParallel();
                             });
                         });
                         onParallel();
                     });
-                }, function () {
-                    console.log(Object.keys(options.dict).join('\n'));
-                    local.exit();
-                });
+                }, local.onErrorThrow);
             }());
             return;
         case 'dbTableCustomOrgCrudGetManyByQuery':
